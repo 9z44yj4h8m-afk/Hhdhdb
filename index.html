@@ -7,6 +7,7 @@
   <meta name="description" content="واجهة ALMOGHANI LIVE التجريبية للأفلام والمسلسلات والبث المباشر">
   <title>ALMOGHANI LIVE — عالم المشاهدة</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -46,12 +47,12 @@
       <section class="hero chrome-panel" aria-labelledby="heroTitle">
         <img id="heroImage" src="assets/hero-desert-series.png" alt="مشهد سينمائي خيالي عند الغروب" fetchpriority="high">
         <div class="hero-shade"></div>
-        <div class="hero-topline"><span class="new-badge"><i></i> اختيارات اليوم</span><span class="hero-format">واجهة تجريبية <b>HD</b></span></div>
+        <div class="hero-topline"><span class="new-badge"><i></i> اختيارات اليوم</span><span class="hero-format"><span id="heroFormatLabel">واجهة تجريبية</span> <b>HD</b></span></div>
         <div class="hero-copy">
           <div class="hero-kicker" id="heroKicker"><span class="kicker-mark">✦</span> مسلسل عربي • دراما تاريخية</div>
           <h2 id="heroTitle">ليل البادية</h2>
           <p id="heroDescription">حكاية عن الشجاعة والوفاء، في رحلةٍ عبر الرمال وأسرار الماضي.</p>
-          <div class="hero-meta"><span id="heroMeta">موسم واحد</span><span class="meta-separator"></span><span>محتوى توضيحي</span></div>
+          <div class="hero-meta"><span id="heroMeta">موسم واحد</span><span class="meta-separator"></span><span id="heroMetaQualifier">محتوى توضيحي</span></div>
           <div class="hero-actions">
             <button class="button button-primary" id="heroWatch"><span class="play-symbol" aria-hidden="true">▶</span> شاهد الآن</button>
             <button class="button button-secondary" id="heroFavorite"><span class="heart-symbol" aria-hidden="true">♡</span> أضف للمفضلة</button>
@@ -74,11 +75,12 @@
             <button class="filter-chip" data-filter="foreign">أجنبي</button>
             <button class="filter-chip" data-filter="turkish">تركي</button>
             <button class="filter-chip" data-filter="sports">رياضة</button>
+            <button class="filter-chip" data-filter="venezuela" hidden>فنزويلا</button>
           </div>
-          <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="ابحث عن فيلم أو مسلسل" aria-label="ابحث عن فيلم أو مسلسل"><kbd>⌕</kbd></label>
+          <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="ابحث عن قناة أو فيلم أو مسلسل" aria-label="ابحث عن قناة أو فيلم أو مسلسل"><kbd>⌕</kbd></label>
         </div>
 
-        <div class="results-line"><span id="resultsCount">العناوين المتاحة</span><span class="demo-tag"><i></i> محتوى تجريبي</span></div>
+        <div class="results-line"><span id="resultsCount">العناوين المتاحة</span><span class="demo-tag"><i></i> <span id="contentSourceLabel">محتوى تجريبي</span></span></div>
         <div class="media-grid" id="mediaGrid" aria-live="polite"></div>
         <div class="empty-state" id="emptyState" hidden><div class="empty-icon">⌕</div><h3>ما لقينا نتائج</h3><p>جرّب كلمة بحث ثانية أو اختر تصنيفاً مختلفاً.</p><button class="button button-secondary" id="resetSearch">مسح البحث والتصفية</button></div>
         <div class="pagination" id="pagination" aria-label="صفحات المحتوى"></div>
@@ -90,13 +92,13 @@
       </section>
     </main>
 
-    <footer class="footer"><a class="footer-brand" href="#home" data-view-link="home">ALMOGHANI <span>LIVE</span></a><span>واجهة تجريبية — لا تتضمن بثاً أو محتوى مرئياً فعلياً.</span><a class="image-credit" href="https://unsplash.com/s/photos/night-skyline" target="_blank" rel="noreferrer">صورة المدينة: Unsplash</a><span class="copyright">© <span id="year"></span> ALMOGHANI LIVE</span></footer>
+    <footer class="footer"><a class="footer-brand" href="#home" data-view-link="home">ALMOGHANI <span>LIVE</span></a><span>روابط البث من جهات خارجية؛ التوفر والحقوق مسؤولية المصدر.</span><a class="image-credit" href="https://github.com/Free-TV/IPTV" target="_blank" rel="noreferrer">مصدر القنوات: Free-TV/IPTV</a><span class="copyright">© <span id="year"></span> ALMOGHANI LIVE</span></footer>
   </div>
 
   <dialog class="player-dialog" id="playerDialog" aria-labelledby="dialogTitle">
     <div class="dialog-frame">
       <div class="dialog-header"><div><span class="dialog-indicator"></span><span id="dialogTitle">معاينة العنوان</span></div><button class="dialog-close" id="closeDialog" aria-label="إغلاق المعاينة">×</button></div>
-      <div class="demo-player"><img id="dialogImage" src="assets/hero-desert-series.png" alt=""><div class="player-vignette"></div><div class="demo-play-mark" aria-hidden="true">▶</div><div class="demo-message"><b>معاينة تصميمية</b><span>البث المرئي غير متصل في هذا الموقع التجريبي.</span></div><div class="player-controls"><span>▶</span><div class="fake-progress"><i></i></div><span>HD</span><span>⛶</span></div></div>
+      <div class="demo-player" id="playerContainer"><img id="dialogImage" src="assets/hero-desert-series.png" alt=""><video id="streamVideo" controls playsinline preload="none" aria-label="مشغل البث المباشر" hidden></video><iframe id="externalFrame" title="مشغل القناة الخارجي" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" hidden></iframe><div class="player-vignette" id="playerVignette"></div><div class="demo-play-mark" id="demoPlayMark" aria-hidden="true">▶</div><div class="demo-message" id="demoMessage"><b>معاينة تصميمية</b><span>هذا العنوان للعرض التوضيحي فقط.</span></div><div class="stream-status" id="streamStatus" role="status" aria-live="polite" hidden></div><a class="source-link" id="sourceLink" target="_blank" rel="noopener noreferrer" hidden>فتح المصدر الأصلي ↗</a></div>
       <div class="dialog-footer"><p id="dialogDescription">يمكنك تصفح العناوين وحفظ ما يعجبك في مكتبتك.</p><button class="button button-secondary" id="dialogOk">العودة للتصفح</button></div>
     </div>
   </dialog>
