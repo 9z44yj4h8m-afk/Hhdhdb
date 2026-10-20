@@ -3,24 +3,103 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#070b18">
-  <meta name="description" content="التصميم التصوري للصفحة الرياضية من NOVA PLAY">
-  <title>الصفحة الرياضية — NOVA PLAY</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: #070b18; color: #f5f3f0; font-family: system-ui, sans-serif; }
-    main { width: min(100%, 1600px); margin-inline: auto; padding: 24px; }
-    h1 { margin: 0 0 16px; font-size: clamp(1.1rem, 2.3vw, 1.7rem); font-weight: 650; }
-    img { display: block; width: 100%; height: auto; border: 1px solid #253453; border-radius: 12px; box-shadow: 0 16px 60px #0008, 0 0 32px #b512ff1a; }
-    p { color: #aeb8cb; line-height: 1.7; font-size: .95rem; }
-    @media (max-width: 600px) { main { padding: 14px; } img { border-radius: 8px; } }
-  </style>
+  <meta name="theme-color" content="#080c12">
+  <meta name="description" content="واجهة ALMOGHANI LIVE التجريبية للأفلام والمسلسلات والبث المباشر">
+  <title>ALMOGHANI LIVE — عالم المشاهدة</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
 </head>
 <body>
-  <main>
-    <h1>الصفحة الرياضية — NOVA PLAY</h1>
-    <img src="iptv_neon_sports_page.png" alt="موكاب صفحة رياضية عربية لمنصة NOVA PLAY، بتصميم نيون داكن وقنوات وبطاقات رياضية">
-    <p>تصميم تصوري ثابت بدقة 2560×1440؛ لا يتضمن بثاً مباشراً أو عناصر تفاعلية.</p>
-  </main>
+  <div class="page-noise" aria-hidden="true"></div>
+  <div class="app-frame">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <a class="brand" href="#home" data-view-link="home" aria-label="ALMOGHANI LIVE — الرئيسية">
+          <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><path d="M7 5.5 40 24 7 42.5V5.5Z" fill="currentColor"/><path d="M14 15v18l16-9-16-9Z" fill="#111820"/><path d="M8 5.5 40 24M8 42.5 40 24" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="1.5"/></svg>
+          <span class="brand-word"><b>ALMOGHANI</b><small>LIVE</small></span>
+        </a>
+        <div class="member-chip"><span class="crown" aria-hidden="true">♛</span><span>عضوية تجريبية</span><i></i><span>واجهة ترفيهية</span></div>
+      </div>
+
+      <nav class="primary-nav" id="primaryNav" aria-label="التنقل الرئيسي">
+        <button class="nav-link active" data-view="home">الرئيسية</button>
+        <button class="nav-link" data-view="movies">الأفلام</button>
+        <button class="nav-link" data-view="series">المسلسلات</button>
+        <button class="nav-link" data-view="live">البث المباشر</button>
+        <button class="nav-link" data-view="sports">الرياضة</button>
+      </nav>
+
+      <div class="top-actions">
+        <button class="chrome-icon" id="searchFocus" aria-label="الانتقال إلى البحث" title="بحث"><span aria-hidden="true">⌕</span></button>
+        <button class="chrome-icon favorite-shortcut" id="favoritesToggle" aria-label="عرض المفضلة" aria-pressed="false" title="المفضلة"><span aria-hidden="true">♡</span></button>
+        <button class="chrome-icon menu-toggle" id="menuToggle" aria-label="فتح قائمة التنقل" aria-expanded="false" title="القائمة"><span aria-hidden="true">☰</span></button>
+        <div class="clock-chip"><span class="clock-dot"></span><span id="clock">--:--</span></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="page-heading">
+        <div><p class="eyebrow"><span class="eyebrow-line"></span> ALMOGHANI <span>•</span> تجربة الواجهة</p><h1 id="pageTitle">عالم المشاهدة</h1></div>
+        <button class="library-button" id="libraryToggle" aria-pressed="false"><span aria-hidden="true">▣</span><span>مكتبتي</span><b id="favoriteCount">0</b></button>
+      </div>
+
+      <section class="hero chrome-panel" aria-labelledby="heroTitle">
+        <img id="heroImage" src="assets/hero-desert-series.png" alt="مشهد سينمائي خيالي عند الغروب" fetchpriority="high">
+        <div class="hero-shade"></div>
+        <div class="hero-topline"><span class="new-badge"><i></i> اختيارات اليوم</span><span class="hero-format">واجهة تجريبية <b>HD</b></span></div>
+        <div class="hero-copy">
+          <div class="hero-kicker" id="heroKicker"><span class="kicker-mark">✦</span> مسلسل عربي • دراما تاريخية</div>
+          <h2 id="heroTitle">ليل البادية</h2>
+          <p id="heroDescription">حكاية عن الشجاعة والوفاء، في رحلةٍ عبر الرمال وأسرار الماضي.</p>
+          <div class="hero-meta"><span id="heroMeta">موسم واحد</span><span class="meta-separator"></span><span>محتوى توضيحي</span></div>
+          <div class="hero-actions">
+            <button class="button button-primary" id="heroWatch"><span class="play-symbol" aria-hidden="true">▶</span> شاهد الآن</button>
+            <button class="button button-secondary" id="heroFavorite"><span class="heart-symbol" aria-hidden="true">♡</span> أضف للمفضلة</button>
+          </div>
+        </div>
+        <div class="hero-side-mark" aria-hidden="true">A<span>•</span>L</div>
+        <div class="hero-pagination" aria-label="العرض المميز"><button class="dot active" aria-label="العرض الأول"></button><button class="dot" aria-label="العرض الثاني"></button><button class="dot" aria-label="العرض الثالث"></button></div>
+      </section>
+
+      <section class="library-section" aria-labelledby="contentHeading">
+        <div class="section-heading">
+          <div><p class="section-kicker">تصفّح حسب اختيارك</p><h2 id="contentHeading">أحدث الإضافات</h2></div>
+          <button class="text-button" id="clearFilters">عرض الكل <span aria-hidden="true">←</span></button>
+        </div>
+
+        <div class="toolbar chrome-panel">
+          <div class="filter-list" role="group" aria-label="تصفية حسب النوع">
+            <button class="filter-chip selected" data-filter="all">الكل</button>
+            <button class="filter-chip" data-filter="arabic">عربي</button>
+            <button class="filter-chip" data-filter="foreign">أجنبي</button>
+            <button class="filter-chip" data-filter="turkish">تركي</button>
+            <button class="filter-chip" data-filter="sports">رياضة</button>
+          </div>
+          <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="ابحث عن فيلم أو مسلسل" aria-label="ابحث عن فيلم أو مسلسل"><kbd>⌕</kbd></label>
+        </div>
+
+        <div class="results-line"><span id="resultsCount">العناوين المتاحة</span><span class="demo-tag"><i></i> محتوى تجريبي</span></div>
+        <div class="media-grid" id="mediaGrid" aria-live="polite"></div>
+        <div class="empty-state" id="emptyState" hidden><div class="empty-icon">⌕</div><h3>ما لقينا نتائج</h3><p>جرّب كلمة بحث ثانية أو اختر تصنيفاً مختلفاً.</p><button class="button button-secondary" id="resetSearch">مسح البحث والتصفية</button></div>
+        <div class="pagination" id="pagination" aria-label="صفحات المحتوى"></div>
+      </section>
+
+      <section class="continue-section chrome-panel">
+        <div class="continue-copy"><span class="continue-icon">▶</span><div><p class="section-kicker">جاهز للمتابعة؟</p><h2>استكشف مكتبتك</h2><p>اختر عنواناً لعرض معاينة الواجهة وحفظه في مفضلتك.</p></div></div>
+        <button class="button button-metal" id="browseButton">استكشف المحتوى <span aria-hidden="true">←</span></button>
+      </section>
+    </main>
+
+    <footer class="footer"><a class="footer-brand" href="#home" data-view-link="home">ALMOGHANI <span>LIVE</span></a><span>واجهة تجريبية — لا تتضمن بثاً أو محتوى مرئياً فعلياً.</span><a class="image-credit" href="https://unsplash.com/s/photos/night-skyline" target="_blank" rel="noreferrer">صورة المدينة: Unsplash</a><span class="copyright">© <span id="year"></span> ALMOGHANI LIVE</span></footer>
+  </div>
+
+  <dialog class="player-dialog" id="playerDialog" aria-labelledby="dialogTitle">
+    <div class="dialog-frame">
+      <div class="dialog-header"><div><span class="dialog-indicator"></span><span id="dialogTitle">معاينة العنوان</span></div><button class="dialog-close" id="closeDialog" aria-label="إغلاق المعاينة">×</button></div>
+      <div class="demo-player"><img id="dialogImage" src="assets/hero-desert-series.png" alt=""><div class="player-vignette"></div><div class="demo-play-mark" aria-hidden="true">▶</div><div class="demo-message"><b>معاينة تصميمية</b><span>البث المرئي غير متصل في هذا الموقع التجريبي.</span></div><div class="player-controls"><span>▶</span><div class="fake-progress"><i></i></div><span>HD</span><span>⛶</span></div></div>
+      <div class="dialog-footer"><p id="dialogDescription">يمكنك تصفح العناوين وحفظ ما يعجبك في مكتبتك.</p><button class="button button-secondary" id="dialogOk">العودة للتصفح</button></div>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
