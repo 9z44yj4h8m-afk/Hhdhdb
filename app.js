@@ -53,7 +53,7 @@
     $('#heroImage').alt = item.type === 'live' ? `قناة ${item.title}` : `مشهد توضيحي من ${item.title}`;
     $('#heroTitle').textContent = item.title;
     $('#heroDescription').textContent = item.description;
-    $('#heroMeta').textContent = item.type === 'live' ? 'فنزويلا • مصدر خارجي' : item.meta;
+    $('#heroMeta').textContent = item.type === 'live' ? `${item.country === 'venezuela' ? 'فنزويلا' : item.genre} • مصدر خارجي` : item.meta;
     $('#heroMetaQualifier').textContent = item.type === 'live' ? 'بث خارجي' : 'محتوى توضيحي';
     const labels = { series:'مسلسل عربي • تجربة ترفيهية', movie:'فيلم • مكتبة تجريبية', live:'قناة مباشرة • فنزويلا', sports:'رياضة • محتوى توضيحي' };
     $('#heroKicker').innerHTML = `<span class="kicker-mark" aria-hidden="true">✦</span> ${labels[item.type] || labels.movie}`;
@@ -125,7 +125,19 @@
     grid.innerHTML = list.slice(start,start+pageSize).map(cardMarkup).join('');
     const hasResults = list.length > 0;
     grid.hidden = !hasResults; emptyState.hidden = hasResults;
-    pagination.innerHTML = pageCount > 1 ? `<button class="page-button" data-page="${state.page-1}" aria-label="الصفحة السابقة" ${state.page===1?'disabled':''}>‹</button>${Array.from({length:pageCount},(_,i)=>`<button class="page-button ${state.page===i+1?'active':''}" data-page="${i+1}" aria-current="${state.page===i+1?'page':'false'}">${i+1}</button>`).join('')}<button class="page-button" data-page="${state.page+1}" aria-label="الصفحة التالية" ${state.page===pageCount?'disabled':''}>›</button>` : '';
+    pagination.innerHTML = buildPagination(pageCount);
+  }
+
+  function buildPagination(pageCount){
+    if(pageCount<=1) return '';
+    const pages=[...new Set([1,state.page-1,state.page,state.page+1,pageCount].filter(page=>page>=1&&page<=pageCount))].sort((a,b)=>a-b);
+    let previous=0;
+    const numbers=pages.map(page=>{
+      const gap=page-previous>1?'<span class="pagination-ellipsis" aria-hidden="true">…</span>':'';
+      previous=page;
+      return `${gap}<button class="page-button ${state.page===page?'active':''}" data-page="${page}" aria-current="${state.page===page?'page':'false'}">${page}</button>`;
+    }).join('');
+    return `<button class="page-button" data-step="-1" aria-label="الصفحة السابقة" ${state.page===1?'disabled':''}>‹</button>${numbers}<button class="page-button" data-step="1" aria-label="الصفحة التالية" ${state.page===pageCount?'disabled':''}>›</button>`;
   }
 
   function setView(view){
@@ -143,5 +155,118 @@
     const frame=$('#externalFrame'); frame.src='about:blank'; frame.hidden=true;
     $('#dialogImage').hidden=false;
     $('#playerVignette').hidden=false;
-    $('#demoPlayMark').hidden=false;    $('#demoMessage').hidden=fals
-(Content truncated due to size limit. Use line ranges to read remaining content)
+    $('#demoPlayMark').hidden=false;
+    $('#demoMessage').hidden=false;
+    $('#streamStatus').hidden=true;
+    $('#sourceLink').hidden=true;
+    $('#playerContainer').classList.remove('stream-active');
+  }
+
+  function openPlayer(item){
+    clearStream();
+    $('#dialogTitle').textContent = item.type === 'live' ? `البث المباشر: ${item.title}` : `معاينة: ${item.title}`;
+    $('#dialogImage').src = item.image;
+    $('#dialogImage').alt = `صورة توضيحية لعنوان ${item.title}`;
+    $('#dialogDescription').textContent = item.type === 'live'
+      ? `${item.title} • ${item.country === 'venezuela' ? 'قائمة فنزويلا' : item.genre} — البث من رابط خارجي وقد يختلف توفره حسب المصدر والمنطقة.`
+      : `${typeLabel(item)} • ${item.genre} — ${item.description}`;
+    const dialog=$('#playerDialog');
+    if(typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open','');
+
+    if(item.stream){
+      $('#playerContainer').classList.add('stream-active');
+      $('#dialogImage').hidden=true; $('#playerVignette').hidden=true; $('#demoPlayMark').hidden=true; $('#demoMessage').hidden=true;
+      const video=$('#streamVideo'); video.hidden=false;
+      const status=$('#streamStatus'); status.hidden=false; status.textContent='جارٍ الاتصال بمصدر البث…';
+      const source=$('#sourceLink'); source.href=item.source || item.stream; source.hidden=false;
+      if(video.canPlayType('application/vnd.apple.mpegurl')){
+        video.src=item.stream; video.load(); status.textContent='اضغط زر التشغيل لبدء القناة.';
+      } else if(window.Hls && window.Hls.isSupported()){
+        hlsPlayer=new window.Hls({enableWorker:true,lowLatencyMode:true});
+        hlsPlayer.loadSource(item.stream); hlsPlayer.attachMedia(video);
+        hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED,()=>{ if(!dialog.open) return; status.textContent='تم تحميل القناة. اضغط تشغيل لبدء البث.'; });
+        hlsPlayer.on(window.Hls.Events.ERROR,(_event,data)=>{
+          if(data.fatal && dialog.open){ status.textContent='تعذر تشغيل هذا المصدر الآن؛ قد يكون الرابط متوقفاً أو يمنع التضمين.'; }
+        });
+      } else {
+        status.textContent='هذا المتصفح لا يدعم تشغيل HLS. جرّب فتح المصدر الأصلي.';
+      }
+    } else if(item.embed){
+      $('#playerContainer').classList.add('stream-active');
+      $('#dialogImage').hidden=true; $('#playerVignette').hidden=true; $('#demoPlayMark').hidden=true; $('#demoMessage').hidden=true;
+      const frame=$('#externalFrame'); frame.hidden=false; frame.src=item.embed;
+      const source=$('#sourceLink'); source.href=item.source || item.embed; source.hidden=false;
+    } else {
+      $('#demoMessage').innerHTML='<b>معاينة تصميمية</b><span>هذا العنوان للعرض التوضيحي فقط.</span>';
+    }
+  }
+
+  async function loadPlaylistChannels(){
+    try{
+      const response=await fetch('assets/almoghani-public-channels.json',{cache:'no-store'});
+      if(!response.ok) return;
+      const playlist=await response.json();
+      const knownUrls=new Set(items.map(item=>item.stream || item.source).filter(Boolean));
+      let added=0;
+      for(const entry of playlist){
+        if(!entry || !/^m3u-[a-f0-9]{16}$/.test(entry.id) || typeof entry.name!=='string' || typeof entry.url!=='string') continue;
+        let parsed; try{ parsed=new URL(entry.url); }catch{ continue; }
+        if(parsed.protocol!=='https:' || knownUrls.has(entry.url)) continue;
+        if(entry.kind==='youtube' && (!entry.embed || !entry.embed.startsWith('https://www.youtube-nocookie.com/embed/'))) continue;
+        if(entry.kind!=='youtube' && entry.kind!=='hls') continue;
+        const name=entry.name.replace(/[\u0000-\u001f\u007f]/g,' ').trim();
+        const group=String(entry.group || 'العامة').replace(/[\u0000-\u001f\u007f]/g,' ').trim();
+        if(!name) continue;
+        const item={id:entry.id,title:name,short:name.slice(0,6),type:'live',origin:'foreign',groupKey:entry.groupKey,country:'other',genre:group,meta:'قناة مباشرة',image:'assets/live-stadium.png',badge:'مباشر',description:`${name} • ${group} — المصدر خارجي.`,source:entry.url};
+        if(entry.kind==='youtube') item.embed=entry.embed; else item.stream=entry.url;
+        items.push(item); knownUrls.add(entry.url); added++;
+      }
+      if(added){ state.page=1; render(); }
+    }catch(error){ console.warn('تعذر تحميل قائمة القنوات الإضافية.',error); }
+  }
+
+  function showToast(message){
+    const toast=$('#toast'); toast.textContent=message; toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove('show'),2300);
+  }
+
+  function toggleFavorite(id){
+    const item=items.find(entry=>entry.id===id); if(!item) return;
+    if(state.favorites.has(id)){state.favorites.delete(id);showToast(`أزلنا «${item.title}» من المفضلة.`);}else{state.favorites.add(id);showToast(`أضفنا «${item.title}» إلى المفضلة.`);}
+    saveFavorites(); render();
+  }
+
+  $$('.nav-link').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.view)));
+  $$('[data-view-link]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();setView(link.dataset.viewLink)}));
+  $('.filter-list').addEventListener('click',event=>{const button=event.target.closest('.filter-chip');if(!button)return;state.origin=button.dataset.filter;state.page=1;render()});
+  $('#favoritesToggle').addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;render();document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
+  $('#libraryToggle').addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;render();document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
+  $('#searchFocus').addEventListener('click',()=>{searchInput.focus();document.querySelector('.toolbar').scrollIntoView({behavior:'smooth',block:'center'})});
+  searchInput.addEventListener('input',()=>{state.query=searchInput.value;state.page=1;render()});
+  $('#clearFilters').addEventListener('click',()=>{state.origin='all';state.query='';state.favoritesOnly=false;state.page=1;searchInput.value='';render()});
+  $('#resetSearch').addEventListener('click',()=>{state.origin='all';state.query='';state.favoritesOnly=false;state.page=1;searchInput.value='';render()});
+  $('#heroWatch').addEventListener('click',()=>openPlayer(currentHero()));
+  $('#heroFavorite').addEventListener('click',event=>toggleFavorite(event.currentTarget.dataset.favoriteId));
+  $('#mediaGrid').addEventListener('click',event=>{
+    const favoriteButton=event.target.closest('[data-favorite]');
+    if(favoriteButton){event.stopPropagation();toggleFavorite(favoriteButton.dataset.favorite);return;}
+    const watchButton=event.target.closest('[data-watch]');
+    if(watchButton){const item=items.find(entry=>entry.id===watchButton.dataset.watch);if(item)openPlayer(item);}
+  });
+  pagination.addEventListener('click',event=>{const button=event.target.closest('[data-page],[data-step]');if(!button||button.disabled)return;state.page=button.dataset.page?Number(button.dataset.page):state.page+Number(button.dataset.step);render();document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
+  $$('.dot').forEach((dot,index)=>dot.addEventListener('click',()=>{const featured=['layl-albadia','zill-almadina','venevision'].map(id=>items.find(item=>item.id===id));setHero(featured[index]);$$('.dot').forEach((el,i)=>el.classList.toggle('active',i===index))}));
+  $('#browseButton').addEventListener('click',()=>{setView('home');document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
+  $('#closeDialog').addEventListener('click',()=>$('#playerDialog').close());
+  $('#dialogOk').addEventListener('click',()=>$('#playerDialog').close());
+  $('#playerDialog').addEventListener('click',event=>{if(event.target===$('#playerDialog'))$('#playerDialog').close()});
+  $('#playerDialog').addEventListener('close',clearStream);
+  $('#menuToggle').addEventListener('click',event=>{const open=$('#primaryNav').classList.toggle('open');event.currentTarget.setAttribute('aria-expanded',String(open))});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){$('#primaryNav').classList.remove('open');$('#menuToggle').setAttribute('aria-expanded','false')}});
+
+  const clock=$('#clock');
+  function tick(){clock.textContent=new Intl.DateTimeFormat('ar-SA',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date())}
+  tick();setInterval(tick,30000);
+  $('#year').textContent=new Date().getFullYear();
+  render();
+  loadPlaylistChannels();
+})();

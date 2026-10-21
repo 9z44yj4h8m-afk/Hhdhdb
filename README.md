@@ -184,3 +184,10 @@ In your Pull Request you need to provide information to show that the channel is
 Note: Public taxes (whether national or regional, whether called TV License or not) do not constitute a private paid subscription.
 
 If a stream is broken, simply move the channel to the invalid category and replace `[>]` with `[x]` in the url column.
+
+
+## ALMOGHANI LIVE — قائمة القنوات المنقاة
+
+- يحتفظ الموقع ببيانات القنوات المنقّاة في `assets/almoghani-public-channels.json`؛ تضم 375 رابطاً فريداً من القائمة المرفقة، إضافة إلى القنوات الفنزويلية الموجودة في الواجهة.
+- أُزيل ملفا القوائم الخام اللذان تضمّنا معاملات وصول من تاريخ Git. لا ترفع ملفات قوائم تحتوي `token` أو مفاتيح وصول أو بيانات حساب.
+- روابط HLS وYouTube تُدار من مزوّديها الخارجيين؛ قد تتوقف أو تكون مقيّدة جغرافياً، وعلى مالك المصدر تأكيد حقوق إعادة البث.

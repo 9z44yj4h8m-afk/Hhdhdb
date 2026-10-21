@@ -69,14 +69,7 @@
         </div>
 
         <div class="toolbar chrome-panel">
-          <div class="filter-list" role="group" aria-label="تصفية حسب النوع">
-            <button class="filter-chip selected" data-filter="all">الكل</button>
-            <button class="filter-chip" data-filter="arabic">عربي</button>
-            <button class="filter-chip" data-filter="foreign">أجنبي</button>
-            <button class="filter-chip" data-filter="turkish">تركي</button>
-            <button class="filter-chip" data-filter="sports">رياضة</button>
-            <button class="filter-chip" data-filter="venezuela" hidden>فنزويلا</button>
-          </div>
+          <div class="filter-list" id="filterList" role="group" aria-label="تصفية حسب النوع"></div>
           <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="ابحث عن قناة أو فيلم أو مسلسل" aria-label="ابحث عن قناة أو فيلم أو مسلسل"><kbd>⌕</kbd></label>
         </div>
 
@@ -92,7 +85,7 @@
       </section>
     </main>
 
-    <footer class="footer"><a class="footer-brand" href="#home" data-view-link="home">ALMOGHANI <span>LIVE</span></a><span>روابط البث من جهات خارجية؛ التوفر والحقوق مسؤولية المصدر.</span><a class="image-credit" href="https://github.com/Free-TV/IPTV" target="_blank" rel="noreferrer">مصدر القنوات: Free-TV/IPTV</a><span class="copyright">© <span id="year"></span> ALMOGHANI LIVE</span></footer>
+    <footer class="footer"><a class="footer-brand" href="#home" data-view-link="home">ALMOGHANI <span>LIVE</span></a><span>روابط البث من جهات خارجية؛ التوفر والحقوق مسؤولية المصدر.</span><span class="image-credit">مصادر القنوات: <a href="https://github.com/Free-TV/IPTV" target="_blank" rel="noreferrer">Free-TV/IPTV</a> وقائمة M3U المرفقة</span><span class="copyright">© <span id="year"></span> ALMOGHANI LIVE</span></footer>
   </div>
 
   <dialog class="player-dialog" id="playerDialog" aria-labelledby="dialogTitle">
