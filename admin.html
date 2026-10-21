@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b12">
+  <meta name="description" content="لوحة إدارة ALMOGHANI LIVE للقنوات والأفلام وتخصيص الواجهة">
+  <title>لوحة الإدارة — ALMOGHANI LIVE</title>
+  <link rel="stylesheet" href="admin.css">
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <a class="admin-brand" href="index.html" aria-label="العودة إلى الموقع">
+        <span class="brand-icon" aria-hidden="true">▶</span>
+        <span><b>ALMOGHANI</b><small>LIVE CONTROL</small></span>
+      </a>
+      <div class="sidebar-caption">مساحة الإدارة</div>
+      <nav class="admin-nav" aria-label="أقسام لوحة الإدارة">
+        <button class="nav-item active" data-screen="overview"><span>◫</span> نظرة عامة</button>
+        <button class="nav-item" data-screen="content"><span>▤</span> القنوات والأفلام</button>
+        <button class="nav-item" data-screen="design"><span>◈</span> تخصيص التصميم</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="status-pill"><i></i> حفظ محلي مفعّل</div>
+        <a class="back-link" href="index.html">← العودة إلى المنصة</a>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div>
+          <p class="eyebrow">ALMOGHANI LIVE <span>•</span> لوحة التحكم</p>
+          <h1 id="screenTitle">نظرة عامة</h1>
+        </div>
+        <div class="header-actions">
+          <span class="admin-avatar" aria-label="مدير المحتوى">م</span>
+          <div class="admin-identity"><b>مدير المحتوى</b><small>تحكم بهذا المتصفح</small></div>
+          <a class="view-site" href="index.html">عرض الموقع <span>↗</span></a>
+        </div>
+      </header>
+
+      <div class="local-notice" role="note">
+        <span class="notice-mark">i</span>
+        <p><b>تنبيه الحفظ:</b> هذه نسخة GitHub Pages ثابتة بلا خادم أو تسجيل دخول إداري؛ التغييرات تحفظ في هذا المتصفح فقط. لتعميمها على الزوار أو الأجهزة الأخرى، صدّر نسخة JSON وانشرها بعد مراجعتها.</p>
+      </div>
+
+      <section class="screen active" id="screen-overview">
+        <div class="welcome-row">
+          <div><p class="section-label">مركز المحتوى</p><h2>أهلاً بك في لوحة الإدارة</h2><p>أدر مكتبتك وعدّل الهوية البصرية من مكان واحد.</p></div>
+          <button class="primary-button" id="quickAdd"><span>＋</span> إضافة محتوى</button>
+        </div>
+        <div class="stats-grid">
+          <article class="stat-card"><span class="stat-icon cyan">◉</span><div><small>إجمالي القنوات</small><strong id="statChannels">—</strong></div><span class="stat-trend">مباشر</span></article>
+          <article class="stat-card"><span class="stat-icon purple">▣</span><div><small>الأفلام</small><strong id="statMovies">—</strong></div><span class="stat-trend">مكتبة</span></article>
+          <article class="stat-card"><span class="stat-icon gold">▤</span><div><small>المسلسلات</small><strong id="statSeries">—</strong></div><span class="stat-trend">مواسم</span></article>
+          <article class="stat-card"><span class="stat-icon blue">◈</span><div><small>كل العناصر</small><strong id="statTotal">—</strong></div><span class="stat-trend">المجموع</span></article>
+        </div>
+        <div class="overview-grid">
+          <article class="panel-card overview-card">
+            <div class="panel-heading"><div><p class="section-label">إجراءات سريعة</p><h3>إدارة المكتبة</h3></div><span class="heading-icon">⌘</span></div>
+            <button class="action-row" data-go="content"><span class="action-icon cyan">＋</span><span><b>أضف قناة أو فيلماً</b><small>أدخل الاسم والتصنيف ورابط المصدر</small></span><i>←</i></button>
+            <button class="action-row" data-go="content"><span class="action-icon purple">✎</span><span><b>عدّل بيانات المحتوى</b><small>حدّث العناوين أو الملصقات أو الروابط</small></span><i>←</i></button>
+            <button class="action-row" data-go="design"><span class="action-icon gold">◈</span><span><b>خصّص مظهر المنصة</b><small>الألوان والتوهج واسم العلامة</small></span><i>←</i></button>
+          </article>
+          <article class="panel-card quick-preview">
+            <div class="panel-heading"><div><p class="section-label">حالة المكتبة</p><h3>ملخص المحتوى</h3></div><span class="live-dot">● متاح</span></div>
+            <div class="content-breakdown"><div><span>القنوات المباشرة</span><b id="breakdownChannels">—</b></div><div class="bar"><i id="barChannels"></i></div><div><span>الأفلام</span><b id="breakdownMovies">—</b></div><div class="bar violet"><i id="barMovies"></i></div><div><span>المسلسلات</span><b id="breakdownSeries">—</b></div><div class="bar gold"><i id="barSeries"></i></div></div>
+            <div class="tip-box"><span>✦</span><p>تُحدّث أعداد المكتبة تلقائياً عند إضافة المحتوى أو حذفه.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-content" hidden>
+        <div class="content-toolbar">
+          <div><p class="section-label">مكتبة المنصة</p><h2>القنوات والأفلام</h2><p class="screen-subtitle">إضافة وتعديل وحذف العناصر التي تظهر في الصفحة الرئيسية.</p></div>
+          <button class="primary-button" id="addContent"><span>＋</span> إضافة عنصر</button>
+        </div>
+        <div class="table-tools">
+          <label class="admin-search"><span>⌕</span><input id="contentSearch" type="search" placeholder="ابحث بالاسم أو التصنيف" aria-label="البحث في المحتوى"></label>
+          <select id="typeFilter" aria-label="تصفية حسب النوع"><option value="all">كل الأنواع</option><option value="live">قنوات مباشرة</option><option value="movie">أفلام</option><option value="series">مسلسلات</option><option value="sports">رياضة</option></select>
+          <button class="subtle-button" id="exportData">تصدير JSON</button>
+          <label class="subtle-button import-button">استيراد JSON<input id="importFile" type="file" accept="application/json,.json" hidden></label>
+          <button class="subtle-button" id="restoreContent">استعادة الافتراضي</button>
+        </div>
+        <div class="table-card">
+          <div class="table-scroll"><table><thead><tr><th>العنوان</th><th>النوع</th><th>التصنيف</th><th>المصدر</th><th>الإجراءات</th></tr></thead><tbody id="contentRows"></tbody></table></div>
+          <div class="table-footer"><span id="tableCount">—</span><div class="table-pagination" id="tablePagination"></div></div>
+        </div>
+        <div class="empty-panel" id="emptyContent" hidden><span>⌕</span><h3>لا توجد نتائج</h3><p>جرّب تغيير البحث أو أضف عنصراً جديداً.</p></div>
+      </section>
+
+      <section class="screen" id="screen-design" hidden>
+        <div class="content-toolbar"><div><p class="section-label">هوية المنصة</p><h2>تخصيص التصميم</h2><p class="screen-subtitle">غيّر ألوان الواجهة والوهج والزوايا وشاهد معاينة فورية.</p></div></div>
+        <div class="design-layout">
+          <form class="panel-card design-form" id="designForm">
+            <label class="field full"><span>اسم العلامة</span><input id="brandName" maxlength="32" value="ALMOGHANI"></label>
+            <label class="field full"><span>صورة العرض الرئيسي — رابط HTTPS أو مسار assets</span><input id="heroImageUrl" type="url" placeholder="https://… أو assets/banner.jpg"></label>
+            <div class="field-pair"><label class="field"><span>لون التفاعل</span><input id="accentColor" type="color" value="#71d8f5"></label><label class="field"><span>لون التوهج الثانوي</span><input id="violetColor" type="color" value="#b79cff"></label></div>
+            <div class="field-pair"><label class="field"><span>لون الخلفية</span><input id="backgroundColor" type="color" value="#090d13"></label><label class="field"><span>لون البطاقة</span><input id="panelColor" type="color" value="#18212a"></label></div>
+            <label class="field range-field"><span>قوة التوهج <output id="glowValue">40%</output></span><input id="glowStrength" type="range" min="0" max="100" value="40"></label>
+            <label class="field range-field"><span>استدارة البطاقات <output id="radiusValue">14px</output></span><input id="tileRadius" type="range" min="4" max="28" value="14"></label>
+            <div class="form-actions"><button type="submit" class="primary-button">حفظ التصميم</button><button type="button" class="subtle-button" id="resetDesign">إعادة ضبط</button></div>
+          </form>
+          <aside class="panel-card preview-panel"><div class="panel-heading"><div><p class="section-label">معاينة مباشرة</p><h3>بطاقة محتوى</h3></div><span class="live-dot">● معاينة</span></div><div class="design-preview" id="designPreview"><div class="preview-top"><span class="preview-logo">▶ <b id="previewBrand">ALMOGHANI</b></span><span class="preview-live">● LIVE</span></div><div class="preview-image" id="previewImage"><span>مشهد العرض الرئيسي</span></div><div class="preview-bottom"><b>قصة جديدة</b><small>قناة • محتوى مميز</small><button type="button">شاهد الآن</button></div></div><p class="preview-note">تظهر هذه التغييرات على الموقع في هذا المتصفح بعد الحفظ.</p></aside>
+        </div>
+      </section>
+
+      <footer class="admin-footer"><span>ALMOGHANI LIVE • لوحة إدارة محلية</span><span id="saveStatus">لم تُحفظ تغييرات بعد</span></footer>
+    </main>
+  </div>
+
+  <dialog class="content-dialog" id="contentDialog">
+    <form id="contentForm" method="dialog">
+      <div class="dialog-heading"><div><p class="section-label">بيانات المكتبة</p><h2 id="dialogTitle">إضافة محتوى</h2></div><button type="button" class="close-dialog" id="closeContentDialog" aria-label="إغلاق">×</button></div>
+      <input id="contentId" type="hidden">
+      <div class="field-pair"><label class="field"><span>اسم العنوان</span><input id="contentTitle" maxlength="80" required placeholder="مثال: قناة الأخبار"></label><label class="field"><span>النوع</span><select id="contentType"><option value="live">قناة مباشرة</option><option value="movie">فيلم</option><option value="series">مسلسل</option><option value="sports">رياضة</option></select></label></div>
+      <div class="field-pair"><label class="field"><span>التصنيف أو المجموعة</span><input id="contentGenre" maxlength="50" required placeholder="عربي، أخبار، أكشن…"></label><label class="field"><span>صورة الملصق (اختياري)</span><input id="contentImage" placeholder="assets/poster.jpg أو رابط HTTPS"></label></div>
+      <label class="field full"><span>الوصف</span><textarea id="contentDescription" rows="3" maxlength="240" placeholder="وصف قصير يظهر في بطاقة العنوان"></textarea></label>
+      <div class="field-pair"><label class="field"><span>نوع التشغيل</span><select id="playbackType"><option value="none">معاينة فقط</option><option value="hls">رابط HLS مباشر</option><option value="youtube">YouTube</option></select></label><label class="field"><span>رابط المصدر</span><input id="streamUrl" type="url" placeholder="https://…"></label></div>
+      <p class="dialog-safety">تُرفض روابط HTTP وبيانات الوصول مثل token أو password. أضف فقط مصادر تملك حق استخدامها.</p>
+      <div class="dialog-actions"><button class="primary-button" id="saveContent" type="submit">حفظ العنصر</button><button class="subtle-button" type="button" id="cancelContent">إلغاء</button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="adminToast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -48,8 +48,52 @@
   function typeLabel(item){ if(item.type === 'series') return 'مسلسل'; if(item.type === 'movie') return 'فيلم'; if(item.type === 'live') return 'قناة'; return 'رياضة'; }
   function escapeHtml(value){ return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
 
+  const adminStorageKey = 'almoghani-admin-state-v1';
+  const sensitiveUrlKeys = new Set(['token','access_token','auth','signature','sig','secret','api_key','key','wmsauthsign','userid','username','password','passwd','pass']);
+  function readAdminState(){ try { return JSON.parse(localStorage.getItem(adminStorageKey) || '{}') || {}; } catch { return {}; } }
+  function safeAdminUrl(value, allowAsset=false){
+    if(!value) return '';
+    const raw=String(value).trim();
+    if(allowAsset && /^(assets\/|\/assets\/)/.test(raw)) return raw;
+    try{
+      const url=new URL(raw);
+      if(url.protocol!=='https:' || url.username || url.password) return '';
+      for(const key of url.searchParams.keys()) if(sensitiveUrlKeys.has(key.toLowerCase())) return '';
+      return url.href;
+    }catch{return '';}
+  }
+  function sanitizeAdminItem(item){
+    if(!item || typeof item!=='object' || !/^[a-zA-Z0-9_-]{1,90}$/.test(String(item.id||'')) || !['live','movie','series','sports'].includes(item.type) || !String(item.title||'').trim()) return null;
+    const image=safeAdminUrl(item.image,true) || 'assets/live-stadium.png';
+    const stream=item.stream ? safeAdminUrl(item.stream) : '';
+    const source=item.source ? safeAdminUrl(item.source) : '';
+    let embed='';
+    if(item.embed){
+      embed=safeAdminUrl(item.embed);
+      if(!embed) return null;
+      try{const url=new URL(embed); if(!((url.hostname==='www.youtube-nocookie.com' && url.pathname.startsWith('/embed/')) || (url.hostname==='www.dailymotion.com' && url.pathname.startsWith('/embed/video/')))) return null;}catch{return null;}
+    }
+    if((item.stream && !stream) || (item.source && !source)) return null;
+    return {...item,id:String(item.id),title:String(item.title).trim().slice(0,80),genre:String(item.genre||'عام').slice(0,50),description:String(item.description||'').slice(0,240),image,...(stream?{stream}:{}),...(source?{source}:{}),...(embed?{embed}:{})};
+  }
+  function applyAdminDesign(design={}){
+    const validColor=value=>/^#[0-9a-f]{6}$/i.test(String(value||''));
+    const root=document.documentElement;
+    const accent=validColor(design.accent)?design.accent:'#71d8f5';
+    const violet=validColor(design.violet)?design.violet:'#b79cff';
+    const background=validColor(design.background)?design.background:'#090d13';
+    const panel=validColor(design.panel)?design.panel:'#18212a';
+    root.style.setProperty('--cyan',accent); root.style.setProperty('--violet',violet); root.style.setProperty('--admin-bg',background); root.style.setProperty('--admin-panel-color',panel);
+    root.style.setProperty('--admin-radius',`${Math.max(4,Math.min(28,Number(design.radius)||14))}px`);
+    root.style.setProperty('--admin-glow-strength',String(Math.max(0,Math.min(100,Number(design.glow)||0))));
+    document.body.style.background=`radial-gradient(ellipse at 48% -12%,color-mix(in srgb,${background} 60%,#334453) 0,transparent 34%),radial-gradient(ellipse at 100% 54%,color-mix(in srgb,${background} 80%,#13212b) 0,transparent 38%),linear-gradient(180deg,${background} 0%,color-mix(in srgb,${background} 88%,#17222e) 54%,${background} 100%)`;
+    const brand=String(design.brandName||'').trim().slice(0,32); if(brand) document.querySelectorAll('.brand-word b').forEach(el=>el.textContent=brand);
+  }
+
   function setHero(item){
-    $('#heroImage').src = item.image;
+    const design=readAdminState().design || {};
+    applyAdminDesign(design);
+    $('#heroImage').src = safeAdminUrl(design.heroImage,true) || item.image;
     $('#heroImage').alt = item.type === 'live' ? `قناة ${item.title}` : `مشهد توضيحي من ${item.title}`;
     $('#heroTitle').textContent = item.title;
     $('#heroDescription').textContent = item.description;
@@ -202,6 +246,13 @@
   }
 
   async function loadPlaylistChannels(){
+    const saved=readAdminState();
+    if(Array.isArray(saved.content)){
+      const managed=saved.content.map(sanitizeAdminItem).filter(Boolean);
+      items.splice(0,items.length,...managed);
+      render();
+      return;
+    }
     try{
       const response=await fetch('assets/almoghani-public-channels.json',{cache:'no-store'});
       if(!response.ok) return;
@@ -262,6 +313,12 @@
   $('#playerDialog').addEventListener('close',clearStream);
   $('#menuToggle').addEventListener('click',event=>{const open=$('#primaryNav').classList.toggle('open');event.currentTarget.setAttribute('aria-expanded',String(open))});
   document.addEventListener('keydown',event=>{if(event.key==='Escape'){$('#primaryNav').classList.remove('open');$('#menuToggle').setAttribute('aria-expanded','false')}});
+  window.addEventListener('storage',event=>{
+    if(event.key!==adminStorageKey) return;
+    const saved=readAdminState(); applyAdminDesign(saved.design || {});
+    if(Array.isArray(saved.content)) items.splice(0,items.length,...saved.content.map(sanitizeAdminItem).filter(Boolean));
+    render();
+  });
 
   const clock=$('#clock');
   function tick(){clock.textContent=new Intl.DateTimeFormat('ar-SA',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date())}
