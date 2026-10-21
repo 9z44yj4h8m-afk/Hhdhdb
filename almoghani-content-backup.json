@@ -2,15 +2,20 @@
   "version": 1,
   "content": [
     {
-      "id": "layl-albadia",
-      "title": "ليل البادية",
-      "type": "series",
-      "origin": "arabic",
-      "genre": "دراما تاريخية",
-      "meta": "موسم واحد",
-      "image": "assets/hero-desert-series.png",
-      "badge": "اختيار اليوم",
-      "description": "حكاية عن الشجاعة والوفاء، في رحلة عبر الرمال وأسرار الماضي."
+      "id": "m3u-4091f92507085233",
+      "title": "الإخبارية السعودية",
+      "short": "الإخبا",
+      "type": "live",
+      "origin": "foreign",
+      "country": "other",
+      "genre": "السعودية",
+      "groupKey": "saudi",
+      "meta": "قناة مباشرة",
+      "image": "assets/live-stadium.png",
+      "badge": "مباشر",
+      "description": "الإخبارية السعودية • السعودية — المصدر خارجي.",
+      "source": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-al-ekhbaria/297b3ef1cd0633ad9cfba7473a686a06/index.m3u8",
+      "stream": "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-al-ekhbaria/297b3ef1cd0633ad9cfba7473a686a06/index.m3u8"
     },
     {
       "id": "bayt-alaaila",
