@@ -41,10 +41,12 @@
   const pagination = $('#pagination');
   let toastTimer;
   let hlsPlayer = null;
+
   function readFavorites(){ try { return JSON.parse(localStorage.getItem('almoghani-favorites') || '[]'); } catch { return []; } }
   function saveFavorites(){ try { localStorage.setItem('almoghani-favorites', JSON.stringify([...state.favorites])); } catch {} }
   function currentHero(){ return items.find(item => item.id === viewInfo[state.view].hero) || items[0]; }
   function typeLabel(item){ if(item.type === 'series') return 'مسلسل'; if(item.type === 'movie') return 'فيلم'; if(item.type === 'live') return 'قناة'; return 'رياضة'; }
+  function escapeHtml(value){ return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
 
   function setHero(item){
     $('#heroImage').src = item.image;
@@ -63,7 +65,9 @@
   function filteredItems(){
     return items.filter(item => {
       const matchesView = (state.view === 'home' && item.type !== 'live') || (state.view === 'movies' && item.type === 'movie') || (state.view === 'series' && item.type === 'series') || (state.view === 'live' && item.type === 'live') || (state.view === 'sports' && item.type === 'sports');
-      const matchesOrigin = state.origin === 'all' || (state.origin === 'venezuela' ? item.country === 'venezuela' : item.origin === state.origin);
+      const matchesOrigin = state.view === 'live'
+        ? state.origin === 'all' || (state.origin === 'venezuela' ? item.country === 'venezuela' : item.groupKey === state.origin)
+        : state.origin === 'all' || item.origin === state.origin;
       const matchesFavorite = !state.favoritesOnly || state.favorites.has(item.id);
       const needle = state.query.trim().toLocaleLowerCase('ar');
       const haystack = `${item.title} ${item.genre} ${item.description} ${typeLabel(item)} ${item.country || ''}`.toLocaleLowerCase('ar');
@@ -82,37 +86,39 @@
   function cardMarkup(item){
     const isLive = item.type === 'live';
     const favorite = state.favorites.has(item.id);
+    const safeTitle = escapeHtml(item.title);
+    const safeId = escapeHtml(item.id);
+    const safeGenre = escapeHtml(item.genre);
+    const safeShort = escapeHtml(item.short || item.title.slice(0,5));
+    const channelRegion = item.country === 'venezuela' ? 'VENEZUELA' : 'LIVE TV';
     const art = isLive
-      ? `<div class="channel-art-mark"><span class="channel-signal" aria-hidden="true">◉</span><strong>${item.short}</strong><small>VENEZUELA</small></div>`
-      : `<img src="${item.image}" alt="صورة توضيحية لعنوان ${item.title}" loading="lazy">`;
+      ? `<div class="channel-art-mark"><span class="channel-signal" aria-hidden="true">◉</span><strong>${safeShort}</strong><small>${channelRegion}</small></div>`
+      : `<img src="${item.image}" alt="صورة توضيحية لعنوان ${safeTitle}" loading="lazy">`;
     return `<article class="media-card" data-id="${item.id}">
-      <button class="card-art ${isLive?'channel-art':''}" data-watch="${item.id}" aria-label="${isLive?'مشاهدة قناة':'عرض معاينة'} ${item.title}">
-        ${art}<span class="card-badge ${isLive?'live':''}">${item.badge}</span><span class="card-play" aria-hidden="true">▶</span>
+      <button class="card-art ${isLive?'channel-art':''}" data-watch="${safeId}" aria-label="${isLive?'مشاهدة قناة':'عرض معاينة'} ${safeTitle}">
+        ${art}<span class="card-badge ${isLive?'live':''}">${escapeHtml(item.badge)}</span><span class="card-play" aria-hidden="true">▶</span>
       </button>
-      <div class="card-body"><div class="card-title-row"><h3 class="card-title">${item.title}</h3><button class="card-favorite ${favorite?'active':''}" data-favorite="${item.id}" aria-label="${favorite?'إزالة من المفضلة':'إضافة إلى المفضلة'}" aria-pressed="${favorite}">${favorite?'♥':'♡'}</button></div>
-      <div class="card-meta"><span class="card-type">${typeLabel(item)} • ${item.genre}</span><span>${isLive?'خارجي':item.meta}</span></div></div>
+      <div class="card-body"><div class="card-title-row"><h3 class="card-title">${safeTitle}</h3><button class="card-favorite ${favorite?'active':''}" data-favorite="${safeId}" aria-label="${favorite?'إزالة من المفضلة':'إضافة إلى المفضلة'}" aria-pressed="${favorite}">${favorite?'♥':'♡'}</button></div>
+      <div class="card-meta"><span class="card-type">${typeLabel(item)} • ${safeGenre}</span><span>${isLive?'خارجي':escapeHtml(item.meta)}</span></div></div>
     </article>`;
   }
 
   function render(){
     const info = viewInfo[state.view];
     $('#pageTitle').textContent = info.title;
-    $('#contentHeading').textContent = state.favoritesOnly ? 'مكتبتي المفضلة' : info.heading;
-    $('#resultsCount').textContent = state.favoritesOnly ? 'عناوينك المحفوظة' : state.view === 'live' ? 'قنوات خارجية متاحة في القائمة' : 'العناوين المتاحة';
+    const activeFilterLabel = liveFilters.find(filter => filter.id === state.origin)?.label || 'القنوات المباشرة';
+    $('#contentHeading').textContent = state.favoritesOnly ? 'مكتبتي المفضلة' : state.view === 'live' ? (state.origin === 'all' ? 'القنوات المباشرة' : activeFilterLabel) : info.heading;
     $('#contentSourceLabel').textContent = state.view === 'live' ? 'مصادر بث خارجية' : 'محتوى تجريبي';
     $$('.nav-link').forEach(button => button.classList.toggle('active', button.dataset.view === state.view));
-    $$('.filter-chip').forEach(button => {
-      const countryChip = button.dataset.filter === 'venezuela';
-      button.hidden = countryChip ? state.view !== 'live' : state.view === 'live' && button.dataset.filter !== 'all';
-      button.classList.toggle('selected', button.dataset.filter === state.origin);
-      if(button.dataset.filter === 'all') button.textContent = state.view === 'live' ? 'كل القنوات' : 'الكل';
-    });
+    const availableFilters = state.view === 'live' ? liveFilters : standardFilters;
+    $('#filterList').innerHTML = availableFilters.map(filter => `<button class="filter-chip ${filter.id === state.origin ? 'selected' : ''}" data-filter="${filter.id}" aria-pressed="${filter.id === state.origin}">${filter.label}</button>`).join('');
     $('#favoritesToggle').setAttribute('aria-pressed',String(state.favoritesOnly));
     $('#libraryToggle').setAttribute('aria-pressed',String(state.favoritesOnly));
     $('#favoriteCount').textContent = state.favorites.size;
     setHero(currentHero());
     const list = filteredItems();
-    const pageSize = 6;
+    $('#resultsCount').textContent = state.favoritesOnly ? `${list.length} عنوان محفوظ` : state.view === 'live' ? `${list.length} قناة في القائمة` : 'العناوين المتاحة';
+    const pageSize = state.view === 'live' ? 12 : 6;
     const pageCount = Math.max(1,Math.ceil(list.length/pageSize));
     state.page = Math.min(state.page,pageCount);
     const start=(state.page-1)*pageSize;
@@ -137,93 +143,5 @@
     const frame=$('#externalFrame'); frame.src='about:blank'; frame.hidden=true;
     $('#dialogImage').hidden=false;
     $('#playerVignette').hidden=false;
-    $('#demoPlayMark').hidden=false;
-    $('#demoMessage').hidden=false;
-    $('#streamStatus').hidden=true;
-    $('#sourceLink').hidden=true;
-    $('#playerContainer').classList.remove('stream-active');
-  }
-
-  function openPlayer(item){
-    clearStream();
-    $('#dialogTitle').textContent = item.type === 'live' ? `البث المباشر: ${item.title}` : `معاينة: ${item.title}`;
-    $('#dialogImage').src = item.image;
-    $('#dialogImage').alt = `صورة توضيحية لعنوان ${item.title}`;
-    $('#dialogDescription').textContent = item.type === 'live'
-      ? `${item.title} • قائمة فنزويلا — البث من رابط خارجي وقد يختلف توفره حسب المصدر والمنطقة.`
-      : `${typeLabel(item)} • ${item.genre} — ${item.description}`;
-    const dialog=$('#playerDialog');
-    if(typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open','');
-
-    if(item.stream){
-      $('#playerContainer').classList.add('stream-active');
-      $('#dialogImage').hidden=true; $('#playerVignette').hidden=true; $('#demoPlayMark').hidden=true; $('#demoMessage').hidden=true;
-      const video=$('#streamVideo'); video.hidden=false;
-      const status=$('#streamStatus'); status.hidden=false; status.textContent='جارٍ الاتصال بمصدر البث…';
-      const source=$('#sourceLink'); source.href=item.stream; source.hidden=false;
-      if(video.canPlayType('application/vnd.apple.mpegurl')){
-        video.src=item.stream; video.load(); status.textContent='اضغط زر التشغيل لبدء القناة.';
-      } else if(window.Hls && window.Hls.isSupported()){
-        hlsPlayer=new window.Hls({enableWorker:true,lowLatencyMode:true});
-        hlsPlayer.loadSource(item.stream); hlsPlayer.attachMedia(video);
-        hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED,()=>{ if(!dialog.open) return; status.textContent='تم تحميل القناة. اضغط تشغيل لبدء البث.'; });
-        hlsPlayer.on(window.Hls.Events.ERROR,(_event,data)=>{
-          if(data.fatal && dialog.open){ status.textContent='تعذر تشغيل هذا المصدر الآن؛ قد يكون الرابط متوقفاً أو يمنع التضمين.'; }
-        });
-      } else {
-        status.textContent='هذا المتصفح لا يدعم تشغيل HLS. جرّب فتح المصدر الأصلي.';
-      }
-    } else if(item.embed){
-      $('#playerContainer').classList.add('stream-active');
-      $('#dialogImage').hidden=true; $('#playerVignette').hidden=true; $('#demoPlayMark').hidden=true; $('#demoMessage').hidden=true;
-      const frame=$('#externalFrame'); frame.hidden=false; frame.src=item.embed;
-      const source=$('#sourceLink'); source.href=item.embed; source.hidden=false;
-    } else {
-      $('#demoMessage').innerHTML='<b>معاينة تصميمية</b><span>هذا العنوان للعرض التوضيحي فقط.</span>';
-    }
-  }
-
-  function showToast(message){
-    const toast=$('#toast'); toast.textContent=message; toast.classList.add('show');
-    clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.classList.remove('show'),2300);
-  }
-
-  function toggleFavorite(id){
-    const item=items.find(entry=>entry.id===id); if(!item) return;
-    if(state.favorites.has(id)){state.favorites.delete(id);showToast(`أزلنا «${item.title}» من المفضلة.`);}else{state.favorites.add(id);showToast(`أضفنا «${item.title}» إلى المفضلة.`);}
-    saveFavorites(); render();
-  }
-
-  $$('.nav-link').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.view)));
-  $$('[data-view-link]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();setView(link.dataset.viewLink)}));
-  $('.filter-list').addEventListener('click',event=>{const button=event.target.closest('.filter-chip');if(!button)return;state.origin=button.dataset.filter;state.page=1;render()});
-  $('#favoritesToggle').addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;render();document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
-  $('#libraryToggle').addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;render();document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
-  $('#searchFocus').addEventListener('click',()=>{searchInput.focus();document.querySelector('.toolbar').scrollIntoView({behavior:'smooth',block:'center'})});
-  searchInput.addEventListener('input',()=>{state.query=searchInput.value;state.page=1;render()});
-  $('#clearFilters').addEventListener('click',()=>{state.origin='all';state.query='';state.favoritesOnly=false;state.page=1;searchInput.value='';render()});
-  $('#resetSearch').addEventListener('click',()=>{state.origin='all';state.query='';state.favoritesOnly=false;state.page=1;searchInput.value='';render()});
-  $('#heroWatch').addEventListener('click',()=>openPlayer(currentHero()));
-  $('#heroFavorite').addEventListener('click',event=>toggleFavorite(event.currentTarget.dataset.favoriteId));
-  $('#mediaGrid').addEventListener('click',event=>{
-    const favoriteButton=event.target.closest('[data-favorite]');
-    if(favoriteButton){event.stopPropagation();toggleFavorite(favoriteButton.dataset.favorite);return;}
-    const watchButton=event.target.closest('[data-watch]');
-    if(watchButton){const item=items.find(entry=>entry.id===watchButton.dataset.watch);if(item)openPlayer(item);}
-  });
-  pagination.addEventListener('click',event=>{const button=event.target.closest('[data-page]');if(!button||button.disabled)return;state.page=Number(button.dataset.page);render();document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
-  $$('.dot').forEach((dot,index)=>dot.addEventListener('click',()=>{const featured=['layl-albadia','zill-almadina','venevision'].map(id=>items.find(item=>item.id===id));setHero(featured[index]);$$('.dot').forEach((el,i)=>el.classList.toggle('active',i===index))}));
-  $('#browseButton').addEventListener('click',()=>{setView('home');document.querySelector('.library-section').scrollIntoView({behavior:'smooth',block:'start'})});
-  $('#closeDialog').addEventListener('click',()=>$('#playerDialog').close());
-  $('#dialogOk').addEventListener('click',()=>$('#playerDialog').close());
-  $('#playerDialog').addEventListener('click',event=>{if(event.target===$('#playerDialog'))$('#playerDialog').close()});
-  $('#playerDialog').addEventListener('close',clearStream);
-  $('#menuToggle').addEventListener('click',event=>{const open=$('#primaryNav').classList.toggle('open');event.currentTarget.setAttribute('aria-expanded',String(open))});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'){$('#primaryNav').classList.remove('open');$('#menuToggle').setAttribute('aria-expanded','false')}});
-
-  const clock=$('#clock');
-  function tick(){clock.textContent=new Intl.DateTimeFormat('ar-SA',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date())}
-  tick();setInterval(tick,30000);
-  $('#year').textContent=new Date().getFullYear();
-  render();
-})();
+    $('#demoPlayMark').hidden=false;    $('#demoMessage').hidden=fals
+(Content truncated due to size limit. Use line ranges to read remaining content)
