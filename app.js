@@ -49,7 +49,8 @@
   function escapeHtml(value){ return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
 
   const adminStorageKey = 'almoghani-admin-state-v1';
-  const sensitiveUrlKeys = new Set(['token','access_token','auth','signature','sig','secret','api_key','key','wmsauthsign','userid','username','password','passwd','pass']);
+  const sensitiveUrlKeys = new Set(['token','accesstoken','auth','authorization','signature','sig','secret','apikey','key','wmsauthsign','userid','uid','username','password','passwd','pass','pwd','expires','expiry','session','sid','clientid','clientsecret','hash','jwt','cookie','hdnea','hdnts','policy','keypairid','xamzsignature','xamzcredential','xamzexpires','xgoogsignature','xgoogcredential','ticket','credential','credentials']);
+  const sensitiveUrlPattern = /(?:username|userid|password|passwd|pwd|token|auth|apikey|keypair|signature|secret|credential|jwt|hash|cookie|session|expires?|expiry|ticket|policy|hdnea|hdnts)/;
   function readAdminState(){ try { return JSON.parse(localStorage.getItem(adminStorageKey) || '{}') || {}; } catch { return {}; } }
   function safeAdminUrl(value, allowAsset=false){
     if(!value) return '';
@@ -57,8 +58,13 @@
     if(allowAsset && /^(assets\/|\/assets\/)/.test(raw)) return raw;
     try{
       const url=new URL(raw);
-      if(url.protocol!=='https:' || url.username || url.password) return '';
-      for(const key of url.searchParams.keys()) if(sensitiveUrlKeys.has(key.toLowerCase())) return '';
+      if(url.protocol!=='https:' || url.username || url.password || url.hash) return '';
+      for(const [key,value] of url.searchParams.entries()){
+        const normalized=key.toLowerCase().replace(/[^a-z0-9]/g,'');
+        if(sensitiveUrlKeys.has(normalized) || sensitiveUrlPattern.test(normalized) || value.length>=48) return '';
+      }
+      let path; try{path=decodeURIComponent(url.pathname);}catch{return '';}
+      if(/\/(?:token|auth|signature|signed|key|session|ticket)\/[^/?#]{8,}/i.test(path) || (/\/(?:get\.php|xmltv\.php)$/i.test(url.pathname) && url.search)) return '';
       return url.href;
     }catch{return '';}
   }
@@ -74,7 +80,25 @@
       try{const url=new URL(embed); if(!((url.hostname==='www.youtube-nocookie.com' && url.pathname.startsWith('/embed/')) || (url.hostname==='www.dailymotion.com' && url.pathname.startsWith('/embed/video/')))) return null;}catch{return null;}
     }
     if((item.stream && !stream) || (item.source && !source)) return null;
-    return {...item,id:String(item.id),title:String(item.title).trim().slice(0,80),genre:String(item.genre||'عام').slice(0,50),description:String(item.description||'').slice(0,240),image,...(stream?{stream}:{}),...(source?{source}:{}),...(embed?{embed}:{})};
+    const streamType=stream?(item.streamType==='file'?'file':'hls'):'';
+    return {...item,id:String(item.id),title:String(item.title).trim().slice(0,80),genre:String(item.genre||'عام').slice(0,50),description:String(item.description||'').slice(0,240),image,...(stream?{stream,streamType}:{}),...(source?{source}:{}),...(embed?{embed}:{})};
+  }
+  function mapCatalogEntry(entry){
+    if(!entry || typeof entry.id!=='string' || typeof entry.name!=='string' || typeof entry.url!=='string') return null;
+    const url=safeAdminUrl(entry.url); if(!url) return null;
+    const title=entry.name.replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,80);
+    const genre=String(entry.group||'العامة').replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,50) || 'العامة';
+    if(!title || !/^[a-zA-Z0-9_-]{1,90}$/.test(entry.id)) return null;
+    const type=['live','movie','series','sports'].includes(entry.type)?entry.type:'live';
+    const item={id:entry.id,title,short:title.slice(0,6),type,origin:'foreign',country:'other',genre,groupKey:String(entry.groupKey||'general').slice(0,60),meta:type==='movie'?'فيلم':type==='series'?'مسلسل':'قناة مباشرة',image:type==='movie'?'assets/poster-city-thriller.png':type==='series'?'assets/poster-family-drama.png':'assets/live-stadium.png',badge:type==='live'?'مباشر':type==='movie'?'فيلم':type==='series'?'مسلسل':'رياضة',description:`${title} • ${genre} — المصدر خارجي.`,source:url};
+    if(entry.kind==='youtube'){
+      const embed=safeAdminUrl(entry.embed);
+      try{const parsed=new URL(embed);if(parsed.hostname!=='www.youtube-nocookie.com'||!/^\/embed\/[A-Za-z0-9_-]{6,20}$/.test(parsed.pathname))return null;}catch{return null;}
+      item.embed=embed;
+    }else if(entry.kind==='hls'||entry.kind==='mp4'){
+      item.stream=url; item.streamType=entry.kind==='mp4'?'file':'hls';
+    }else return null;
+    return item;
   }
   function applyAdminDesign(design={}){
     const validColor=value=>/^#[0-9a-f]{6}$/i.test(String(value||''));
@@ -119,6 +143,18 @@
     });
   }
 
+  function liveFilterOptions(){
+    const known=new Set(liveFilters.map(filter=>filter.id));
+    const counts=new Map();
+    items.forEach(item=>{
+      if(item.type!=='live'||!item.groupKey||known.has(item.groupKey)) return;
+      const current=counts.get(item.groupKey)||{count:0,label:item.genre||item.groupKey};
+      current.count++; counts.set(item.groupKey,current);
+    });
+    const dynamic=[...counts.entries()].sort((a,b)=>b[1].count-a[1].count).slice(0,6).map(([id,value])=>({id,label:String(value.label).slice(0,18)}));
+    return [...liveFilters,...dynamic];
+  }
+
   function updateFavoriteButton(button, id){
     const active = state.favorites.has(id);
     button.classList.toggle('is-favorite', active);
@@ -150,12 +186,12 @@
   function render(){
     const info = viewInfo[state.view];
     $('#pageTitle').textContent = info.title;
-    const activeFilterLabel = liveFilters.find(filter => filter.id === state.origin)?.label || 'القنوات المباشرة';
+    const availableFilters = state.view === 'live' ? liveFilterOptions() : standardFilters;
+    const activeFilterLabel = availableFilters.find(filter => filter.id === state.origin)?.label || 'القنوات المباشرة';
     $('#contentHeading').textContent = state.favoritesOnly ? 'مكتبتي المفضلة' : state.view === 'live' ? (state.origin === 'all' ? 'القنوات المباشرة' : activeFilterLabel) : info.heading;
     $('#contentSourceLabel').textContent = state.view === 'live' ? 'مصادر بث خارجية' : 'محتوى تجريبي';
     $$('.nav-link').forEach(button => button.classList.toggle('active', button.dataset.view === state.view));
-    const availableFilters = state.view === 'live' ? liveFilters : standardFilters;
-    $('#filterList').innerHTML = availableFilters.map(filter => `<button class="filter-chip ${filter.id === state.origin ? 'selected' : ''}" data-filter="${filter.id}" aria-pressed="${filter.id === state.origin}">${filter.label}</button>`).join('');
+    $('#filterList').innerHTML = availableFilters.map(filter => `<button class="filter-chip ${filter.id === state.origin ? 'selected' : ''}" data-filter="${escapeHtml(filter.id)}" aria-pressed="${filter.id === state.origin}">${escapeHtml(filter.label)}</button>`).join('');
     $('#favoritesToggle').setAttribute('aria-pressed',String(state.favoritesOnly));
     $('#libraryToggle').setAttribute('aria-pressed',String(state.favoritesOnly));
     $('#favoriteCount').textContent = state.favorites.size;
@@ -223,7 +259,9 @@
       const video=$('#streamVideo'); video.hidden=false;
       const status=$('#streamStatus'); status.hidden=false; status.textContent='جارٍ الاتصال بمصدر البث…';
       const source=$('#sourceLink'); source.href=item.source || item.stream; source.hidden=false;
-      if(video.canPlayType('application/vnd.apple.mpegurl')){
+      if(item.streamType==='file' || /\.mp4(?:$|[?#])/i.test(item.stream)){
+        video.src=item.stream; video.load(); status.textContent='ملف الفيديو جاهز. اضغط زر التشغيل.';
+      } else if(video.canPlayType('application/vnd.apple.mpegurl')){
         video.src=item.stream; video.load(); status.textContent='اضغط زر التشغيل لبدء القناة.';
       } else if(window.Hls && window.Hls.isSupported()){
         hlsPlayer=new window.Hls({enableWorker:true,lowLatencyMode:true});
@@ -247,33 +285,37 @@
 
   async function loadPlaylistChannels(){
     const saved=readAdminState();
-    if(Array.isArray(saved.content)){
-      const managed=saved.content.map(sanitizeAdminItem).filter(Boolean);
-      items.splice(0,items.length,...managed);
-      render();
-      return;
-    }
     try{
-      const response=await fetch('assets/almoghani-public-channels.json',{cache:'no-store'});
-      if(!response.ok) return;
-      const playlist=await response.json();
-      const knownUrls=new Set(items.map(item=>item.stream || item.source).filter(Boolean));
-      let added=0;
-      for(const entry of playlist){
-        if(!entry || !/^m3u-[a-f0-9]{16}$/.test(entry.id) || typeof entry.name!=='string' || typeof entry.url!=='string') continue;
-        let parsed; try{ parsed=new URL(entry.url); }catch{ continue; }
-        if(parsed.protocol!=='https:' || knownUrls.has(entry.url)) continue;
-        if(entry.kind==='youtube' && (!entry.embed || !entry.embed.startsWith('https://www.youtube-nocookie.com/embed/'))) continue;
-        if(entry.kind!=='youtube' && entry.kind!=='hls') continue;
-        const name=entry.name.replace(/[\u0000-\u001f\u007f]/g,' ').trim();
-        const group=String(entry.group || 'العامة').replace(/[\u0000-\u001f\u007f]/g,' ').trim();
-        if(!name) continue;
-        const item={id:entry.id,title:name,short:name.slice(0,6),type:'live',origin:'foreign',groupKey:entry.groupKey,country:'other',genre:group,meta:'قناة مباشرة',image:'assets/live-stadium.png',badge:'مباشر',description:`${name} • ${group} — المصدر خارجي.`,source:entry.url};
-        if(entry.kind==='youtube') item.embed=entry.embed; else item.stream=entry.url;
-        items.push(item); knownUrls.add(entry.url); added++;
+      const [channelResponse,extraResponse]=await Promise.all([
+        fetch('assets/almoghani-public-channels.json',{cache:'no-store'}),
+        fetch('assets/almoghani-extra-content.json',{cache:'no-store'})
+      ]);
+      if(!channelResponse.ok||!extraResponse.ok) return;
+      const [channels,extra]=await Promise.all([channelResponse.json(),extraResponse.json()]);
+      const deletedIds=new Set(Array.isArray(saved.deletedCatalogIds)?saved.deletedCatalogIds:[]);
+      if(Array.isArray(saved.content)){
+        const managed=saved.content.map(sanitizeAdminItem).filter(Boolean);
+        const knownIds=new Set(managed.map(item=>item.id));
+        const knownUrls=new Set(managed.map(item=>item.stream||item.source||item.embed).filter(Boolean));
+        for(const entry of extra){
+          const item=mapCatalogEntry(entry); if(!item||deletedIds.has(item.id)) continue;
+          const url=item.stream||item.source||item.embed;
+          if(knownIds.has(item.id)||(url&&knownUrls.has(url))) continue;
+          managed.push(item);knownIds.add(item.id);if(url)knownUrls.add(url);
+        }
+        items.splice(0,items.length,...managed);render();return;
       }
-      if(added){ state.page=1; render(); }
-    }catch(error){ console.warn('تعذر تحميل قائمة القنوات الإضافية.',error); }
+      const knownIds=new Set(items.map(item=>item.id));
+      const knownUrls=new Set(items.map(item=>item.stream||item.source||item.embed).filter(Boolean));
+      let added=0;
+      for(const entry of [...channels,...extra]){
+        const item=mapCatalogEntry(entry); if(!item||deletedIds.has(item.id)) continue;
+        const url=item.stream||item.source||item.embed;
+        if(knownIds.has(item.id)||(url&&knownUrls.has(url))) continue;
+        items.push(item);knownIds.add(item.id);if(url)knownUrls.add(url);added++;
+      }
+      if(added){state.page=1;render();}
+    }catch(error){console.warn('تعذر تحميل قائمة القنوات الإضافية.',error);}
   }
 
   function showToast(message){

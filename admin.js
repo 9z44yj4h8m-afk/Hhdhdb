@@ -2,9 +2,12 @@
   const STORE_KEY = 'almoghani-admin-state-v1';
   const PAGE_SIZE = 15;
   const DEFAULT_DESIGN = { brandName: 'ALMOGHANI', accent: '#71d8f5', violet: '#b79cff', background: '#090d13', panel: '#18212a', glow: 40, radius: 14, heroImage: '' };
-  const SENSITIVE_KEYS = new Set(['token','access_token','auth','signature','sig','secret','api_key','key','wmsauthsign','userid','username','password','passwd','pass']);
+  const SENSITIVE_KEYS = new Set(['token','accesstoken','auth','authorization','signature','sig','secret','apikey','key','wmsauthsign','userid','uid','username','password','passwd','pass','pwd','expires','expiry','session','sid','clientid','clientsecret','hash','jwt','cookie','hdnea','hdnts','policy','keypairid','xamzsignature','xamzcredential','xamzexpires','xgoogsignature','xgoogcredential','ticket','credential','credentials']);
+  const SENSITIVE_KEY_PATTERN = /(?:username|userid|password|passwd|pwd|token|auth|apikey|keypair|signature|secret|credential|jwt|hash|cookie|session|expires?|expiry|ticket|policy|hdnea|hdnts)/;
   let defaults = [];
+  let supplementalDefaults = [];
   let content = [];
+  let deletedCatalogIds = new Set();
   let design = { ...DEFAULT_DESIGN };
   let activeType = 'all';
   let page = 1;
@@ -27,8 +30,14 @@
     if (allowRelative && /^(assets\/|\/assets\/)/.test(raw)) return raw;
     let url;
     try { url = new URL(raw); } catch { return null; }
-    if (url.protocol !== 'https:' || url.username || url.password) return null;
-    for (const key of url.searchParams.keys()) if (SENSITIVE_KEYS.has(key.toLowerCase())) return null;
+    if (url.protocol !== 'https:' || url.username || url.password || url.hash) return null;
+    for (const [key, value] of url.searchParams.entries()) {
+      const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (SENSITIVE_KEYS.has(normalized) || SENSITIVE_KEY_PATTERN.test(normalized) || value.length >= 48) return null;
+    }
+    let decodedPath;
+    try { decodedPath = decodeURIComponent(url.pathname); } catch { return null; }
+    if (/\/(?:token|auth|signature|signed|key|session|ticket)\/[^/?#]{8,}/i.test(decodedPath) || (/\/(?:get\.php|xmltv\.php)$/i.test(url.pathname) && url.search)) return null;
     return url.href;
   }
   function youtubeEmbed(raw) {
@@ -48,9 +57,11 @@
   function mapPlaylistEntry(entry) {
     if (!entry || typeof entry.name !== 'string' || typeof entry.url !== 'string') return null;
     const url = safeUrl(entry.url); if (!url) return null;
-    const item = { id: entry.id, title: entry.name, short: entry.name.slice(0,6), type: 'live', origin: 'foreign', country: 'other', genre: entry.group || 'العامة', groupKey: entry.groupKey || 'general', meta: 'قناة مباشرة', image: 'assets/live-stadium.png', badge: 'مباشر', description: `${entry.name} • ${entry.group || 'العامة'} — المصدر خارجي.`, source: url };
+    const type = ['live','movie','series','sports'].includes(entry.type) ? entry.type : 'live';
+    const image = type === 'movie' ? 'assets/poster-city-thriller.png' : type === 'series' ? 'assets/poster-family-drama.png' : 'assets/live-stadium.png';
+    const item = { id: entry.id, title: entry.name, short: entry.name.slice(0,6), type, origin: 'foreign', country: 'other', genre: entry.group || 'العامة', groupKey: entry.groupKey || 'general', meta: type === 'movie' ? 'فيلم' : type === 'series' ? 'مسلسل' : 'قناة مباشرة', image, badge: type === 'live' ? 'مباشر' : typeNames[type], description: `${entry.name} • ${entry.group || 'العامة'} — المصدر خارجي.`, source: url };
     if (entry.kind === 'youtube') { const embed = youtubeEmbed(entry.embed || ''); if (!embed) return null; item.embed = embed; }
-    else if (entry.kind === 'hls') item.stream = url;
+    else if (entry.kind === 'hls' || entry.kind === 'mp4') { item.stream = url; item.streamType = entry.kind === 'mp4' ? 'file' : 'hls'; }
     else return null;
     return item;
   }
@@ -64,15 +75,17 @@
     if (item.embed && !embedUrl) return null;
     const embed = embedUrl ? youtubeEmbed(embedUrl) : '';
     if (item.embed && !embed) return null;
-    return { ...item, id: String(item.id), title: String(item.title).trim().slice(0,80), genre: String(item.genre || 'عام').trim().slice(0,50), description: String(item.description || '').slice(0,240), image: image || 'assets/live-stadium.png', ...(source ? { source } : {}), ...(stream ? { stream } : {}), ...(embed ? { embed } : {}) };
+    const streamType = stream ? (item.streamType === 'file' ? 'file' : 'hls') : '';
+    return { ...item, id: String(item.id), title: String(item.title).trim().slice(0,80), genre: String(item.genre || 'عام').trim().slice(0,50), description: String(item.description || '').slice(0,240), image: image || 'assets/live-stadium.png', ...(source ? { source } : {}), ...(stream ? { stream, streamType } : {}), ...(embed ? { embed } : {}) };
   }
   async function loadDefaults() {
-    const [baseResponse, channelResponse] = await Promise.all([
-      fetch('assets/default-content.json'), fetch('assets/almoghani-public-channels.json')
+    const [baseResponse, channelResponse, extraResponse] = await Promise.all([
+      fetch('assets/default-content.json'), fetch('assets/almoghani-public-channels.json'), fetch('assets/almoghani-extra-content.json')
     ]);
-    if (!baseResponse.ok || !channelResponse.ok) throw new Error('تعذر تحميل كتالوج الموقع.');
-    const base = await baseResponse.json(); const channels = await channelResponse.json();
-    defaults = [...base, ...channels.map(mapPlaylistEntry).filter(Boolean)].map(cleanItem).filter(Boolean);
+    if (!baseResponse.ok || !channelResponse.ok || !extraResponse.ok) throw new Error('تعذر تحميل كتالوج الموقع.');
+    const base = await baseResponse.json(); const channels = await channelResponse.json(); const extra = await extraResponse.json();
+    supplementalDefaults = extra.map(mapPlaylistEntry).map(cleanItem).filter(Boolean);
+    defaults = [...base, ...channels.map(mapPlaylistEntry).filter(Boolean), ...supplementalDefaults].map(cleanItem).filter(Boolean);
   }
   function applyTheme() {
     const root = document.documentElement;
@@ -96,7 +109,7 @@
   }
   function saveStore(message = 'تم الحفظ في هذا المتصفح') {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, content, design }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ version: 2, content, design, deletedCatalogIds: [...deletedCatalogIds] }));
       $('saveStatus').textContent = `آخر حفظ: ${new Intl.DateTimeFormat('ar-SA',{hour:'2-digit',minute:'2-digit'}).format(new Date())}`;
       updateStats(); renderTable(); if (message) toast(message); return true;
     } catch { toast('تعذر الحفظ؛ مساحة تخزين المتصفح ممتلئة.'); return false; }
@@ -122,26 +135,33 @@
     const shown = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
     $('contentRows').innerHTML = shown.map(item => {
       const thumb = item.image ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy" onerror="this.remove()">` : escapeHtml((item.short || item.title).slice(0,2));
-      const source = item.embed ? 'YouTube' : item.stream ? 'HLS' : item.source ? 'خارجي' : 'معاينة';
+      const source = item.embed ? 'YouTube' : item.streamType === 'file' ? 'MP4' : item.stream ? 'HLS' : item.source ? 'خارجي' : 'معاينة';
       return `<tr><td><div class="table-title"><span class="item-thumb">${thumb}</span><span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.id)}</small></span></div></td><td><span class="type-badge ${item.type === 'live' ? 'live' : ''}">${typeNames[item.type]}</span></td><td>${escapeHtml(item.genre || 'عام')}</td><td>${source}</td><td><div class="row-actions"><button class="row-action" data-edit="${escapeHtml(item.id)}" aria-label="تعديل ${escapeHtml(item.title)}" title="تعديل">✎</button><button class="row-action delete" data-delete="${escapeHtml(item.id)}" aria-label="حذف ${escapeHtml(item.title)}" title="حذف">⌫</button></div></td></tr>`;
     }).join('');
     $('tableCount').textContent = `عرض ${shown.length} من ${rows.length} عنصر`;
     $('emptyContent').hidden = rows.length > 0; $('contentRows').closest('.table-card').hidden = rows.length === 0;
-    $('tablePagination').innerHTML = pages > 1 ? Array.from({length: pages}, (_,i) => `<button class="table-page ${page === i + 1 ? 'active' : ''}" data-page="${i+1}" aria-label="الصفحة ${i+1}">${i+1}</button>`).join('') : '';
+    const pageIds = [...new Set([1,page-1,page,page+1,pages].filter(value => value >= 1 && value <= pages))].sort((a,b) => a-b);
+    let previous = 0;
+    const pageButtons = pageIds.map(value => { const gap = value - previous > 1 ? '<span aria-hidden="true">…</span>' : ''; previous = value; return `${gap}<button class="table-page ${page === value ? 'active' : ''}" data-page="${value}" aria-label="الصفحة ${value}" aria-current="${page === value ? 'page' : 'false'}">${value}</button>`; }).join('');
+    $('tablePagination').innerHTML = pages > 1 ? `<button class="table-page" data-page="${Math.max(1,page-1)}" aria-label="الصفحة السابقة" ${page===1?'disabled':''}>‹</button>${pageButtons}<button class="table-page" data-page="${Math.min(pages,page+1)}" aria-label="الصفحة التالية" ${page===pages?'disabled':''}>›</button>` : '';
   }
   function switchScreen(name) {
     document.querySelectorAll('.screen').forEach(section => { section.hidden = section.id !== `screen-${name}`; section.classList.toggle('active', !section.hidden); });
     document.querySelectorAll('.nav-item').forEach(button => button.classList.toggle('active', button.dataset.screen === name));
     $('screenTitle').textContent = ({ overview: 'نظرة عامة', content: 'القنوات والأفلام', design: 'تخصيص التصميم' })[name] || 'لوحة الإدارة';
   }
-  function setPlaybackUi() { $('streamUrl').disabled = $('playbackType').value === 'none'; $('streamUrl').placeholder = $('playbackType').value === 'youtube' ? 'https://youtube.com/watch?v=…' : 'https://…'; }
+  function setPlaybackUi() {
+    const mode = $('playbackType').value;
+    $('streamUrl').disabled = mode === 'none';
+    $('streamUrl').placeholder = mode === 'youtube' ? 'https://youtube.com/watch?v=…' : mode === 'mp4' ? 'https://…/film.mp4' : 'https://…';
+  }
   function openEditor(item = null) {
     $('contentForm').reset(); $('contentId').value = item?.id || '';
     $('dialogTitle').textContent = item ? 'تعديل المحتوى' : 'إضافة محتوى';
     $('contentTitle').value = item?.title || ''; $('contentType').value = item?.type || 'live'; $('contentGenre').value = item?.genre || '';
     $('contentImage').value = item?.image || (item?.type === 'movie' ? 'assets/poster-city-thriller.png' : 'assets/live-stadium.png');
     $('contentDescription').value = item?.description || '';
-    $('playbackType').value = item?.embed ? 'youtube' : item?.stream ? 'hls' : 'none';
+    $('playbackType').value = item?.embed ? 'youtube' : item?.stream ? (item.streamType === 'file' ? 'mp4' : 'hls') : 'none';
     $('streamUrl').value = item?.source || item?.stream || item?.embed || '';
     setPlaybackUi(); $('contentDialog').showModal(); $('contentTitle').focus();
   }
@@ -162,15 +182,18 @@
       else stream = parsed;
     }
     const old = content.find(x => x.id === id) || {};
-    const base = { ...old }; delete base.stream; delete base.embed; delete base.source;
-    const item = cleanItem({ ...base, id, title, short: title.slice(0,6), type, origin: type === 'live' ? 'foreign' : (old.origin || 'arabic'), country: type === 'live' ? (old.country || 'other') : undefined, groupKey: type === 'live' ? (genre.toLocaleLowerCase('en').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'general') : undefined, genre, meta: type === 'live' ? 'قناة مباشرة' : type === 'movie' ? 'فيلم' : type === 'series' ? 'موسم واحد' : 'رياضة', image, badge: type === 'live' ? 'مباشر' : typeNames[type], description: $('contentDescription').value.trim(), ...(source ? {source} : {}), ...(stream ? {stream} : {}), ...(embed ? {embed} : {}) });
+    const base = { ...old }; delete base.stream; delete base.streamType; delete base.embed; delete base.source;
+    const streamType = mode === 'mp4' ? 'file' : 'hls';
+    const item = cleanItem({ ...base, id, title, short: title.slice(0,6), type, origin: type === 'live' ? 'foreign' : (old.origin || 'arabic'), country: type === 'live' ? (old.country || 'other') : undefined, groupKey: type === 'live' ? (genre.toLocaleLowerCase('en').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'general') : undefined, genre, meta: type === 'live' ? 'قناة مباشرة' : type === 'movie' ? 'فيلم' : type === 'series' ? 'موسم واحد' : 'رياضة', image, badge: type === 'live' ? 'مباشر' : typeNames[type], description: $('contentDescription').value.trim(), ...(source ? {source} : {}), ...(stream ? {stream, streamType} : {}), ...(embed ? {embed} : {}) });
     if (!item) return toast('تعذر التحقق من بيانات العنصر.');
+    deletedCatalogIds.delete(id);
     const index = content.findIndex(x => x.id === id); if (index >= 0) content[index] = item; else content.unshift(item);
     page = 1; saveStore(item.id === id && old.id ? 'تم تعديل المحتوى وحفظه محلياً' : 'تمت إضافة المحتوى وحفظه محلياً'); $('contentDialog').close();
   }
   function removeItem(id) {
     const item = content.find(x => x.id === id); if (!item) return;
     if (!window.confirm(`هل تريد حذف «${item.title}» من هذه المكتبة؟`)) return;
+    if (supplementalDefaults.some(entry => entry.id === id)) deletedCatalogIds.add(id);
     content = content.filter(x => x.id !== id); saveStore('تم حذف العنصر من هذا المتصفح');
   }
   function collectDesign() {
@@ -178,8 +201,19 @@
     if (heroImage === null) { toast('رابط صورة العرض غير صالح.'); return null; }
     return { brandName: $('brandName').value.trim().slice(0,32) || 'ALMOGHANI', heroImage, accent: $('accentColor').value, violet: $('violetColor').value, background: $('backgroundColor').value, panel: $('panelColor').value, glow: Number($('glowStrength').value), radius: Number($('tileRadius').value) };
   }
+  function mergeSupplemental(baseItems) {
+    const merged = [...baseItems];
+    const ids = new Set(merged.map(item => item.id));
+    const urls = new Set(merged.map(item => item.stream || item.source || item.embed).filter(Boolean));
+    for (const item of supplementalDefaults) {
+      const url = item.stream || item.source || item.embed || '';
+      if (deletedCatalogIds.has(item.id) || ids.has(item.id) || (url && urls.has(url))) continue;
+      merged.push(item); ids.add(item.id); if (url) urls.add(url);
+    }
+    return merged;
+  }
   function exportData() {
-    const blob = new Blob([JSON.stringify({version:1, content, design},null,2)], {type:'application/json'});
+    const blob = new Blob([JSON.stringify({version:2, content, design, deletedCatalogIds:[...deletedCatalogIds]},null,2)], {type:'application/json'});
     const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'almoghani-content-backup.json'; link.click(); URL.revokeObjectURL(url); toast('تم تنزيل نسخة JSON احتياطية.');
   }
   async function importData(file) {
@@ -190,7 +224,8 @@
       if (!Array.isArray(parsed.content) || parsed.content.length > 3000) throw new Error('صيغة المكتبة غير صحيحة.');
       const cleaned = parsed.content.map(cleanItem);
       if (cleaned.some(x => !x)) throw new Error('تحتوي النسخة على روابط غير آمنة أو بيانات ناقصة.');
-      content = cleaned; design = { ...DEFAULT_DESIGN, ...(parsed.design || {}) };
+      deletedCatalogIds = new Set(Array.isArray(parsed.deletedCatalogIds) ? parsed.deletedCatalogIds.filter(id => /^[a-zA-Z0-9_-]{1,90}$/.test(String(id))).slice(0,3000) : []);
+      content = mergeSupplemental(cleaned); design = { ...DEFAULT_DESIGN, ...(parsed.design || {}) };
       const validDesign = ['accent','violet','background','panel'].every(k => /^#[0-9a-f]{6}$/i.test(design[k]));
       if (!validDesign) throw new Error('ألوان التصميم غير صالحة.');
       const hero = safeUrl(design.heroImage, {allowRelative:true}); if (hero === null) throw new Error('رابط صورة العرض غير صالح.'); design.heroImage = hero;
@@ -201,7 +236,8 @@
   async function init() {
     await loadDefaults();
     const saved = readStore();
-    content = Array.isArray(saved.content) ? saved.content.map(cleanItem).filter(Boolean) : defaults;
+    deletedCatalogIds = new Set(Array.isArray(saved.deletedCatalogIds) ? saved.deletedCatalogIds.filter(id => /^[a-zA-Z0-9_-]{1,90}$/.test(String(id))) : []);
+    content = Array.isArray(saved.content) ? mergeSupplemental(saved.content.map(cleanItem).filter(Boolean)) : defaults;
     design = { ...DEFAULT_DESIGN, ...(saved.design || {}) };
     applyTheme(); updateStats(); renderTable();
     if (saved.content) $('saveStatus').textContent = 'تغييرات محفوظة على هذا المتصفح';
@@ -231,7 +267,7 @@
   $('importFile').addEventListener('change', event => importData(event.target.files[0]));
   $('restoreContent').addEventListener('click', () => {
     if (!window.confirm('ستُحذف تعديلات المكتبة المحلية ويُستعاد المحتوى الافتراضي. هل تتابع؟')) return;
-    content = defaults.map(item => ({ ...item })); page = 1; saveStore('تمت استعادة المكتبة الافتراضية');
+    deletedCatalogIds.clear(); content = defaults.map(item => ({ ...item })); page = 1; saveStore('تمت استعادة المكتبة الافتراضية');
   });
 
   init().catch(error => { console.error(error); toast('تعذر تحميل بيانات الموقع. حدّث الصفحة وحاول مجدداً.'); });

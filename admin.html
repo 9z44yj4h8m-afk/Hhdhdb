@@ -82,6 +82,8 @@
           <select id="typeFilter" aria-label="تصفية حسب النوع"><option value="all">كل الأنواع</option><option value="live">قنوات مباشرة</option><option value="movie">أفلام</option><option value="series">مسلسلات</option><option value="sports">رياضة</option></select>
           <button class="subtle-button" id="exportData">تصدير JSON</button>
           <label class="subtle-button import-button">استيراد JSON<input id="importFile" type="file" accept="application/json,.json" hidden></label>
+          <a class="subtle-button" href="assets/almoghani-clean-playlist.m3u8" download>تنزيل قائمة M3U المنقّاة</a>
+          <a class="subtle-button" href="assets/epg-sources.json" download>قائمة مصادر EPG</a>
           <button class="subtle-button" id="restoreContent">استعادة الافتراضي</button>
         </div>
         <div class="table-card">
@@ -118,7 +120,7 @@
       <div class="field-pair"><label class="field"><span>اسم العنوان</span><input id="contentTitle" maxlength="80" required placeholder="مثال: قناة الأخبار"></label><label class="field"><span>النوع</span><select id="contentType"><option value="live">قناة مباشرة</option><option value="movie">فيلم</option><option value="series">مسلسل</option><option value="sports">رياضة</option></select></label></div>
       <div class="field-pair"><label class="field"><span>التصنيف أو المجموعة</span><input id="contentGenre" maxlength="50" required placeholder="عربي، أخبار، أكشن…"></label><label class="field"><span>صورة الملصق (اختياري)</span><input id="contentImage" placeholder="assets/poster.jpg أو رابط HTTPS"></label></div>
       <label class="field full"><span>الوصف</span><textarea id="contentDescription" rows="3" maxlength="240" placeholder="وصف قصير يظهر في بطاقة العنوان"></textarea></label>
-      <div class="field-pair"><label class="field"><span>نوع التشغيل</span><select id="playbackType"><option value="none">معاينة فقط</option><option value="hls">رابط HLS مباشر</option><option value="youtube">YouTube</option></select></label><label class="field"><span>رابط المصدر</span><input id="streamUrl" type="url" placeholder="https://…"></label></div>
+      <div class="field-pair"><label class="field"><span>نوع التشغيل</span><select id="playbackType"><option value="none">معاينة فقط</option><option value="hls">رابط HLS مباشر</option><option value="mp4">ملف MP4</option><option value="youtube">YouTube</option></select></label><label class="field"><span>رابط المصدر</span><input id="streamUrl" type="url" placeholder="https://…"></label></div>
       <p class="dialog-safety">تُرفض روابط HTTP وبيانات الوصول مثل token أو password. أضف فقط مصادر تملك حق استخدامها.</p>
       <div class="dialog-actions"><button class="primary-button" id="saveContent" type="submit">حفظ العنصر</button><button class="subtle-button" type="button" id="cancelContent">إلغاء</button></div>
     </form>
